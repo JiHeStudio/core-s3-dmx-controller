@@ -247,6 +247,17 @@
       color: var(--muted);
       font-size: 12px;
     }
+    .control-name {
+      border: 1px solid var(--line);
+      background: #121922;
+      color: var(--muted);
+      border-radius: 8px;
+      min-height: 40px;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
     nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     nav button.active { border-color: rgba(45,226,255,.55); color: var(--cyan); }
   </style>
@@ -325,8 +336,11 @@
           <input id="jamSensitivity" type="range" min="0" max="100" value="70">
           <label>Sens <span id="sensVal">70</span></label>
           <button id="jamSyncBtn">Sync</button>
-          <input id="jamRate" type="range" min="0" max="3" step="1" value="1">
+          <input id="jamRate" type="range" min="0" max="7" step="1" value="1">
           <label id="rateVal">1x</label>
+          <span class="control-name">Range</span>
+          <input id="jamRange" type="range" min="0" max="100" value="70">
+          <label><span id="rangeVal">70</span>%</label>
         </div>
       </section>
     </main>
@@ -371,6 +385,7 @@
       beatFlashUntil: 0,
       sensitivity: 70,
       rateIndex: 1,
+      range: 70,
     };
 
     const enc = new TextEncoder();
@@ -397,6 +412,8 @@
     const sensVal = document.querySelector('#sensVal');
     const jamRate = document.querySelector('#jamRate');
     const rateVal = document.querySelector('#rateVal');
+    const jamRange = document.querySelector('#jamRange');
+    const rangeVal = document.querySelector('#rangeVal');
     const metroBpm = document.querySelector('#metroBpm');
     const beatCells = [...document.querySelectorAll('.beat-cell')];
     const beatCountVal = document.querySelector('#beatCountVal');
@@ -407,6 +424,10 @@
       { label: '1x', cycles: 1 },
       { label: '0.5x', cycles: 0.5 },
       { label: '0.25x', cycles: 0.25 },
+      { label: '0.125x', cycles: 0.125 },
+      { label: '0.06x', cycles: 0.0625 },
+      { label: '0.03x', cycles: 0.03125 },
+      { label: '0.016x', cycles: 0.015625 },
     ];
 
     function clamp(v, lo = 0, hi = 255) {
@@ -709,12 +730,13 @@
       const sweep = (1 - Math.cos(barProgress * Math.PI * 2 * rate)) * 0.5;
       const alternate = Math.floor(elapsedBeats / 4) % 2 === 1;
       const shaped = alternate ? 1 - sweep : sweep;
-      const swing = 74 + sens * 54;
-      const minX = 127 - swing;
-      const maxX = 127 + swing;
+      const range = state.range / 100;
+      const swing = 8 + range * 119;
+      const minY = 127 - swing;
+      const maxY = 127 + swing;
       const levelDrive = Math.min(1, rms / Math.max(threshold, 0.001)) * sens;
-      state.x = clamp(minX + (maxX - minX) * shaped);
-      state.y = 127;
+      state.x = 127;
+      state.y = clamp(minY + (maxY - minY) * shaped);
       state.d = 255;
 
       const level = clamp(rms * 720 * (0.55 + sens));
@@ -746,6 +768,10 @@
     jamRate.addEventListener('input', () => {
       state.rateIndex = Number(jamRate.value);
       rateVal.textContent = rateOptions[state.rateIndex].label;
+    });
+    jamRange.addEventListener('input', () => {
+      state.range = Number(jamRange.value);
+      rangeVal.textContent = state.range;
     });
     tapBtn.addEventListener('click', () => {
       registerBeat(performance.now());
