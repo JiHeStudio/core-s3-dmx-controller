@@ -145,163 +145,228 @@
     video { background: #000; border: 1px solid var(--line); }
     #overlay { position: absolute; pointer-events: none; }
     #jamPage {
-      grid-template-rows: 50px minmax(116px, 1fr) 96px;
-      gap: 6px;
+      grid-template-rows: 34px minmax(178px, 1fr) 106px;
+      gap: 2px;
+      background: #000;
     }
     .metronome {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: linear-gradient(180deg, #121821, #080b0f);
-      box-shadow: inset 0 0 18px rgba(45,226,255,.05);
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
       display: grid;
-      grid-template-columns: 58px 42px 1fr 38px;
-      gap: 6px;
+      grid-template-columns: 54px 38px 1fr 34px;
+      gap: 5px;
       align-items: center;
-      padding: 5px 6px;
+      padding: 0;
       min-width: 0;
     }
     .metronome button {
-      min-height: 32px;
-      padding: 0 8px;
-      font-size: 12px;
-      border-color: rgba(255,228,92,.32);
+      min-height: 26px;
+      padding: 0 6px;
+      font-size: 10px;
+      border-radius: 3px;
+      border-color: #27292d;
+      background: #050505;
+      color: #d9dce2;
     }
     .metro-label {
-      color: var(--muted);
-      font-size: 10px;
+      color: #6f7786;
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
       line-height: 1.1;
+      letter-spacing: 1px;
     }
     .metro-label b {
       display: block;
-      color: var(--text);
-      font-size: 14px;
-      margin-top: 2px;
+      color: #fff;
+      font-size: 12px;
+      margin-top: 1px;
+      letter-spacing: 0;
     }
     .beat-grid {
-      height: 22px;
+      height: 18px;
       min-width: 0;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      border: 1px solid #394552;
-      border-radius: 4px;
+      border: 1px solid #23262b;
+      border-radius: 2px;
       overflow: hidden;
-      background: #0c1014;
+      background: #050505;
     }
     .beat-cell {
-      border-right: 1px solid #394552;
+      border-right: 1px solid #23262b;
       background: transparent;
       transition: background 120ms linear, box-shadow 120ms linear;
     }
     .beat-cell:last-child { border-right: 0; }
     .beat-cell.active {
-      background: linear-gradient(180deg, #eeb51f, #a86f00);
-      box-shadow: inset 0 0 10px rgba(255,228,92,.24);
+      background: #0c8796;
+      box-shadow: none;
     }
     .beat-cell.flash {
-      background: linear-gradient(180deg, #fff087, #ff9d00);
-      box-shadow: 0 0 18px rgba(255,228,92,.55), inset 0 0 8px rgba(255,255,255,.35);
+      background: #ffffff;
+      box-shadow: none;
     }
     .beat-count {
-      color: var(--text);
+      color: #d8dde6;
       text-align: right;
-      font-size: 12px;
+      font-size: 10px;
+      font-weight: 800;
       white-space: nowrap;
     }
     .jam-stage {
       display: grid;
       place-items: center;
       min-height: 0;
+      padding-bottom: 0;
     }
     .jam-orb {
-      width: min(58vw, 34svh, 220px);
-      aspect-ratio: 1;
-      border-radius: 50%;
-      border: 1px solid rgba(45,226,255,.32);
-      display: grid;
-      place-items: center;
+      width: min(62vw, 32svh, 230px);
+      min-height: 168px;
+      border: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
       position: relative;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 50% 50%, rgba(255,255,255,.13), transparent 18%),
-        conic-gradient(from 230deg, rgba(45,226,255,.18), rgba(255,63,213,.14), rgba(255,228,92,.12), rgba(52,247,143,.17), rgba(45,226,255,.18)),
-        linear-gradient(90deg, transparent calc(50% - .5px), rgba(137,162,181,.28) 50%, transparent calc(50% + .5px)),
-        linear-gradient(0deg, transparent calc(50% - .5px), rgba(137,162,181,.28) 50%, transparent calc(50% + .5px));
-      box-shadow:
-        0 0 22px rgba(45,226,255,.11),
-        inset 0 0 28px rgba(0,0,0,.72),
-        inset 0 0 2px rgba(255,255,255,.42);
-    }
-    .jam-orb::before,
-    .jam-orb::after {
-      content: "";
-      position: absolute;
-      inset: 10%;
-      border-radius: 50%;
-      border: 1px solid rgba(255,255,255,.11);
-      pointer-events: none;
-    }
-    .jam-orb::after {
-      inset: 25%;
-      border-color: rgba(45,226,255,.16);
-      box-shadow: 0 0 20px rgba(45,226,255,.10);
+      background: transparent;
+      box-shadow: none;
+      color: #fff;
+      touch-action: manipulation;
     }
     .jam-pulse {
-      width: 30%;
-      aspect-ratio: 1;
+      width: 82px;
+      height: 82px;
       border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #fff, var(--cyan) 30%, var(--magenta) 70%, rgba(255,63,213,.18));
-      box-shadow:
-        0 0 34px rgba(45,226,255,.46),
-        0 0 58px rgba(255,63,213,.22);
-      transform: scale(.55);
-      transition: transform 120ms linear, opacity 120ms linear, box-shadow 120ms linear;
-      opacity: .42;
-      z-index: 1;
+      border: 4px solid #083a43;
+      background: transparent;
+      box-shadow: none;
+      transform: scale(1);
+      transition: border-color 120ms linear, transform 120ms linear, opacity 120ms linear;
+      opacity: 1;
+      position: relative;
+    }
+    .jam-pulse::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 17px;
+      width: 24px;
+      height: 34px;
+      border: 5px solid #eceef2;
+      border-radius: 16px;
+      transform: translateX(-50%);
+    }
+    .jam-pulse::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 40px;
+      width: 42px;
+      height: 24px;
+      border: 5px solid #eceef2;
+      border-top: 0;
+      border-radius: 0 0 24px 24px;
+      transform: translateX(-50%);
+      box-shadow: 0 16px 0 -14px #eceef2;
+    }
+    .jam-title {
+      display: grid;
+      gap: 4px;
+      justify-items: center;
+      font-size: 42px;
+      line-height: .95;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-shadow: 2px 2px 0 #0d7d91;
+    }
+    .jam-title span {
+      color: #687081;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      text-shadow: none;
     }
     .jam-stats {
-      position: absolute;
-      bottom: 12%;
+      position: static;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      color: var(--muted);
-      font-size: 10px;
+      gap: 18px;
+      color: #687081;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 1px;
       text-align: center;
-      z-index: 1;
+      text-transform: uppercase;
     }
     .jam-stats b {
       display: block;
-      color: var(--text);
-      font-size: 16px;
+      color: #fff;
+      font-size: 13px;
       line-height: 1.1;
+      letter-spacing: 0;
     }
     .jam-controls {
       display: grid;
-      grid-template-columns: 78px 1fr 40px;
+      grid-template-columns: 82px 1fr 32px;
       align-items: center;
-      gap: 6px 8px;
+      gap: 8px 10px;
+      align-self: end;
     }
     .jam-controls button {
-      min-height: 30px;
-      padding: 0 8px;
-      font-size: 12px;
+      min-height: 24px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #687081;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-align: left;
+      text-transform: uppercase;
     }
-    .jam-controls input[type="range"] { height: 24px; }
+    .jam-controls button.live { color: #fff; }
+    .jam-controls input[type="range"] {
+      height: 18px;
+      accent-color: #fff;
+    }
+    .jam-controls input[type="range"]::-webkit-slider-runnable-track {
+      height: 3px;
+      background: #202226;
+      border: 0;
+      border-radius: 0;
+    }
+    .jam-controls input[type="range"]::-webkit-slider-thumb {
+      width: 16px;
+      height: 16px;
+      margin-top: -6.5px;
+      border: 0;
+      border-radius: 50%;
+      background: #fff;
+    }
     .jam-controls label {
-      color: var(--muted);
+      color: #fff;
       font-size: 10px;
+      font-weight: 900;
       white-space: nowrap;
+      text-align: right;
     }
     .control-name {
-      border: 1px solid var(--line);
-      background: #121922;
-      color: var(--muted);
-      border-radius: 8px;
-      min-height: 30px;
-      display: grid;
-      place-items: center;
-      font-size: 11px;
-      font-weight: 700;
+      border: 0;
+      background: transparent;
+      color: #687081;
+      min-height: 24px;
+      display: flex;
+      align-items: center;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
     nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     nav button.active { border-color: rgba(45,226,255,.55); color: var(--cyan); }
@@ -316,9 +381,12 @@
       .brand strong { font-size: 14px; }
       nav { gap: 6px; }
       nav button { min-height: 34px; font-size: 12px; padding: 0 8px; }
-      #jamPage { grid-template-rows: 46px minmax(104px, 1fr) 88px; gap: 5px; }
-      .jam-orb { width: min(52vw, 30svh, 190px); }
-      .jam-stats { bottom: 10%; }
+      #jamPage { grid-template-rows: 30px minmax(150px, 1fr) 96px; gap: 0; }
+      .jam-orb { width: min(56vw, 28svh, 200px); min-height: 148px; gap: 9px; }
+      .jam-pulse { width: 72px; height: 72px; }
+      .jam-pulse::before { top: 14px; width: 21px; height: 30px; border-width: 4px; }
+      .jam-pulse::after { top: 36px; width: 38px; height: 21px; border-width: 4px; box-shadow: 0 15px 0 -13px #eceef2; }
+      .jam-title { font-size: 36px; }
     }
   </style>
 </head>
@@ -383,8 +451,9 @@
           <span id="beatCountVal" class="beat-count">0:0</span>
         </div>
         <div class="jam-stage">
-          <div class="jam-orb">
+          <div id="jamTap" class="jam-orb">
             <div id="jamPulse" class="jam-pulse"></div>
+            <div class="jam-title">JAM<span>Tap to toggle</span></div>
             <div class="jam-stats">
               <span><b id="bpmVal">--</b>BPM</span>
               <span><b id="levelVal">0</b>LEVEL</span>
@@ -465,6 +534,7 @@
     const cameraBtn = document.querySelector('#cameraBtn');
     const overlayCtx = overlay.getContext('2d');
     const jamBtn = document.querySelector('#jamBtn');
+    const jamTap = document.querySelector('#jamTap');
     const jamPulse = document.querySelector('#jamPulse');
     const bpmVal = document.querySelector('#bpmVal');
     const levelVal = document.querySelector('#levelVal');
@@ -698,6 +768,7 @@
       state.firstBeat = 0;
       state.d = 255;
       jamBtn.classList.add('live');
+      jamTap.classList.add('live');
       jamBtn.textContent = 'Stop Jam';
       setStatus('Jam: listening');
       requestAnimationFrame(trackJam);
@@ -719,9 +790,11 @@
       state.y = 127;
       state.d = 255;
       jamBtn.classList.remove('live');
+      jamTap.classList.remove('live');
       jamBtn.textContent = 'Start Jam';
-      jamPulse.style.transform = 'scale(.55)';
-      jamPulse.style.opacity = '.42';
+      jamPulse.style.transform = 'scale(1)';
+      jamPulse.style.opacity = '1';
+      jamPulse.style.borderColor = '#083a43';
       metroBpm.textContent = '--';
       beatCountVal.textContent = '0:0';
       beatCells.forEach(cell => cell.classList.remove('active', 'flash'));
@@ -804,13 +877,9 @@
       bpmVal.textContent = state.bpm ? state.bpm : '--';
       levelVal.textContent = level;
       updateMetronome(now, elapsedBeats);
-      jamPulse.style.transform = `scale(${0.58 + levelDrive * 0.38})`;
-      jamPulse.style.opacity = `${0.46 + levelDrive * 0.36}`;
-      jamPulse.style.boxShadow = `
-        0 0 ${28 + levelDrive * 42}px rgba(45,226,255,.50),
-        0 0 ${44 + levelDrive * 70}px rgba(255,63,213,.25),
-        0 0 ${20 + levelDrive * 36}px rgba(255,228,92,.16)
-      `;
+      jamPulse.style.transform = `scale(${1 + levelDrive * 0.08})`;
+      jamPulse.style.opacity = `${0.76 + levelDrive * 0.24}`;
+      jamPulse.style.borderColor = levelDrive > 0.72 ? '#ffffff' : '#0a7f91';
 
       updateUi();
       scheduleSend();
@@ -820,6 +889,13 @@
     connectBtn.addEventListener('click', connectBle);
     cameraBtn.addEventListener('click', () => startCamera().catch(err => setStatus(`Camera failed: ${err.message || err}`)));
     jamBtn.addEventListener('click', () => {
+      if (state.jamRunning) {
+        stopJam();
+      } else {
+        startJam().catch(err => setStatus(`Mic failed: ${err.message || err}`));
+      }
+    });
+    jamTap.addEventListener('click', () => {
       if (state.jamRunning) {
         stopJam();
       } else {
