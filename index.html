@@ -145,8 +145,54 @@
     video { background: #000; border: 1px solid var(--line); }
     #overlay { position: absolute; pointer-events: none; }
     #jamPage {
-      grid-template-rows: minmax(0, 1fr) 108px;
+      grid-template-rows: 72px minmax(0, 1fr) 118px;
       gap: 10px;
+    }
+    .metronome {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      display: grid;
+      grid-template-columns: 78px 52px 1fr 44px;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      min-width: 0;
+    }
+    .metro-label {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.1;
+    }
+    .metro-label b {
+      display: block;
+      color: var(--text);
+      font-size: 15px;
+      margin-top: 4px;
+    }
+    .beat-grid {
+      height: 28px;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid #394552;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #0c1014;
+    }
+    .beat-cell {
+      border-right: 1px solid #394552;
+      background: transparent;
+      transition: background 120ms linear;
+    }
+    .beat-cell:last-child { border-right: 0; }
+    .beat-cell.active { background: #c98200; }
+    .beat-cell.flash { background: #ffb21a; }
+    .beat-count {
+      color: var(--text);
+      text-align: right;
+      font-size: 13px;
+      white-space: nowrap;
     }
     .jam-stage {
       display: grid;
@@ -193,7 +239,7 @@
     }
     .jam-controls {
       display: grid;
-      grid-template-columns: 112px 1fr 38px;
+      grid-template-columns: 96px 1fr 46px;
       align-items: center;
       gap: 10px;
     }
@@ -254,6 +300,17 @@
       </section>
 
       <section id="jamPage" class="page">
+        <div class="metronome">
+          <span class="metro-label">BPM<b id="metroBpm">--</b></span>
+          <button id="tapBtn">Tap</button>
+          <div id="beatGrid" class="beat-grid">
+            <span class="beat-cell"></span>
+            <span class="beat-cell"></span>
+            <span class="beat-cell"></span>
+            <span class="beat-cell"></span>
+          </div>
+          <span id="beatCountVal" class="beat-count">0:0</span>
+        </div>
         <div class="jam-stage">
           <div class="jam-orb">
             <div id="jamPulse" class="jam-pulse"></div>
@@ -266,7 +323,10 @@
         <div class="jam-controls">
           <button id="jamBtn">Start Jam</button>
           <input id="jamSensitivity" type="range" min="0" max="100" value="70">
-          <label><span id="sensVal">70</span>%</label>
+          <label>Sens <span id="sensVal">70</span></label>
+          <button id="jamSyncBtn">Sync</button>
+          <input id="jamRate" type="range" min="0" max="3" step="1" value="1">
+          <label id="rateVal">1x</label>
         </div>
       </section>
     </main>
@@ -308,7 +368,9 @@
       noiseFloor: 0.02,
       lastBeat: 0,
       firstBeat: 0,
+      beatFlashUntil: 0,
       sensitivity: 70,
+      rateIndex: 1,
     };
 
     const enc = new TextEncoder();
@@ -333,6 +395,19 @@
     const levelVal = document.querySelector('#levelVal');
     const jamSensitivity = document.querySelector('#jamSensitivity');
     const sensVal = document.querySelector('#sensVal');
+    const jamRate = document.querySelector('#jamRate');
+    const rateVal = document.querySelector('#rateVal');
+    const metroBpm = document.querySelector('#metroBpm');
+    const beatCells = [...document.querySelectorAll('.beat-cell')];
+    const beatCountVal = document.querySelector('#beatCountVal');
+    const tapBtn = document.querySelector('#tapBtn');
+    const jamSyncBtn = document.querySelector('#jamSyncBtn');
+    const rateOptions = [
+      { label: '2x', cycles: 2 },
+      { label: '1x', cycles: 1 },
+      { label: '0.5x', cycles: 0.5 },
+      { label: '0.25x', cycles: 0.25 },
+    ];
 
     function clamp(v, lo = 0, hi = 255) {
       return Math.max(lo, Math.min(hi, Math.round(v)));
@@ -566,6 +641,9 @@
       jamBtn.textContent = 'Start Jam';
       jamPulse.style.transform = 'scale(.55)';
       jamPulse.style.opacity = '.42';
+      metroBpm.textContent = '--';
+      beatCountVal.textContent = '0:0';
+      beatCells.forEach(cell => cell.classList.remove('active', 'flash'));
       setStatus('Jam stopped');
       updateUi();
       scheduleSend();
@@ -576,6 +654,7 @@
         state.firstBeat = now;
       }
       state.lastBeat = now;
+      state.beatFlashUntil = now + 150;
       state.beatCount += 1;
       state.beatTimes.push(now);
       state.beatTimes = state.beatTimes.filter(t => now - t < 6000);
@@ -591,6 +670,17 @@
           state.bpm = clamp(60000 / median, 60, 220);
         }
       }
+    }
+
+    function updateMetronome(now, elapsedBeats) {
+      const currentBeat = Math.floor(elapsedBeats % 4);
+      const barNumber = Math.floor(elapsedBeats / 4) + 1;
+      beatCells.forEach((cell, index) => {
+        cell.classList.toggle('active', index <= currentBeat);
+        cell.classList.toggle('flash', index === currentBeat && now < state.beatFlashUntil);
+      });
+      metroBpm.textContent = state.bpm ? state.bpm : '--';
+      beatCountVal.textContent = `${barNumber}:${currentBeat + 1}`;
     }
 
     function trackJam(now) {
@@ -614,16 +704,16 @@
       const bpm = state.bpm || 120;
       const beatMs = 60000 / bpm;
       const elapsedBeats = state.firstBeat ? Math.max(0, (now - state.firstBeat) / beatMs) : 0;
-      const phraseIndex = Math.floor(elapsedBeats / 4);
-      const phraseProgress = Math.min(1, (elapsedBeats % 4) / 4);
-      const eased = phraseProgress * phraseProgress * (3 - 2 * phraseProgress);
+      const barProgress = (elapsedBeats % 4) / 4;
+      const rate = rateOptions[state.rateIndex].cycles;
+      const sweep = (1 - Math.cos(barProgress * Math.PI * 2 * rate)) * 0.5;
+      const alternate = Math.floor(elapsedBeats / 4) % 2 === 1;
+      const shaped = alternate ? 1 - sweep : sweep;
       const swing = 74 + sens * 54;
       const minX = 127 - swing;
       const maxX = 127 + swing;
       const levelDrive = Math.min(1, rms / Math.max(threshold, 0.001)) * sens;
-      state.x = phraseIndex % 2 === 0
-        ? clamp(minX + (maxX - minX) * eased)
-        : clamp(maxX - (maxX - minX) * eased);
+      state.x = clamp(minX + (maxX - minX) * shaped);
       state.y = 127;
       state.d = 255;
 
@@ -631,6 +721,7 @@
       state.level = level;
       bpmVal.textContent = state.bpm ? state.bpm : '--';
       levelVal.textContent = level;
+      updateMetronome(now, elapsedBeats);
       jamPulse.style.transform = `scale(${0.58 + levelDrive * 0.38})`;
       jamPulse.style.opacity = `${0.46 + levelDrive * 0.36}`;
 
@@ -651,6 +742,22 @@
     jamSensitivity.addEventListener('input', () => {
       state.sensitivity = Number(jamSensitivity.value);
       sensVal.textContent = state.sensitivity;
+    });
+    jamRate.addEventListener('input', () => {
+      state.rateIndex = Number(jamRate.value);
+      rateVal.textContent = rateOptions[state.rateIndex].label;
+    });
+    tapBtn.addEventListener('click', () => {
+      registerBeat(performance.now());
+      setStatus('Jam: tap beat');
+    });
+    jamSyncBtn.addEventListener('click', () => {
+      const now = performance.now();
+      state.firstBeat = now;
+      state.lastBeat = now;
+      state.beatCount = 0;
+      state.beatFlashUntil = now + 150;
+      setStatus('Jam: bar synced');
     });
     pad.addEventListener('pointerdown', e => {
       pad.setPointerCapture(e.pointerId);
