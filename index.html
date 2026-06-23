@@ -307,6 +307,7 @@
       level: 0,
       noiseFloor: 0.02,
       lastBeat: 0,
+      firstBeat: 0,
       sensitivity: 70,
     };
 
@@ -538,6 +539,7 @@
       state.bpm = 0;
       state.noiseFloor = 0.02;
       state.lastBeat = 0;
+      state.firstBeat = 0;
       state.d = 255;
       jamBtn.classList.add('live');
       jamBtn.textContent = 'Stop Jam';
@@ -570,6 +572,9 @@
     }
 
     function registerBeat(now) {
+      if (!state.firstBeat) {
+        state.firstBeat = now;
+      }
       state.lastBeat = now;
       state.beatCount += 1;
       state.beatTimes.push(now);
@@ -608,12 +613,18 @@
       const sinceBeat = now - state.lastBeat;
       const bpm = state.bpm || 120;
       const beatMs = 60000 / bpm;
-      const barProgress = (((state.beatCount % 4) + Math.min(sinceBeat / beatMs, 1)) / 4) % 1;
-      const phase = barProgress * Math.PI * 2;
-      const swing = 54 + sens * 78;
+      const elapsedBeats = state.firstBeat ? Math.max(0, (now - state.firstBeat) / beatMs) : 0;
+      const phraseIndex = Math.floor(elapsedBeats / 4);
+      const phraseProgress = Math.min(1, (elapsedBeats % 4) / 4);
+      const eased = phraseProgress * phraseProgress * (3 - 2 * phraseProgress);
+      const swing = 74 + sens * 54;
+      const minX = 127 - swing;
+      const maxX = 127 + swing;
       const levelDrive = Math.min(1, rms / Math.max(threshold, 0.001)) * sens;
-      state.x = clamp(127 + Math.sin(phase) * swing);
-      state.y = clamp(127 + Math.cos(phase) * swing * 0.68);
+      state.x = phraseIndex % 2 === 0
+        ? clamp(minX + (maxX - minX) * eased)
+        : clamp(maxX - (maxX - minX) * eased);
+      state.y = 127;
       state.d = 255;
 
       const level = clamp(rms * 720 * (0.55 + sens));
