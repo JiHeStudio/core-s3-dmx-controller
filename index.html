@@ -145,7 +145,7 @@
     video { background: #000; border: 1px solid var(--line); }
     #overlay { position: absolute; pointer-events: none; }
     #jamPage {
-      grid-template-rows: minmax(0, 1fr) 72px;
+      grid-template-rows: minmax(0, 1fr) 108px;
       gap: 10px;
     }
     .jam-stage {
@@ -172,7 +172,7 @@
       background: var(--green);
       box-shadow: 0 0 38px rgba(52,247,143,.48);
       transform: scale(.55);
-      transition: transform 80ms linear, opacity 120ms linear;
+      transition: transform 160ms linear, opacity 160ms linear;
       opacity: .42;
     }
     .jam-stats {
@@ -190,6 +190,16 @@
       color: var(--text);
       font-size: 20px;
       line-height: 1.1;
+    }
+    .jam-controls {
+      display: grid;
+      grid-template-columns: 112px 1fr 38px;
+      align-items: center;
+      gap: 10px;
+    }
+    .jam-controls label {
+      color: var(--muted);
+      font-size: 12px;
     }
     nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     nav button.active { border-color: rgba(45,226,255,.55); color: var(--cyan); }
@@ -253,7 +263,11 @@
             </div>
           </div>
         </div>
-        <button id="jamBtn">Start Jam</button>
+        <div class="jam-controls">
+          <button id="jamBtn">Start Jam</button>
+          <input id="jamSensitivity" type="range" min="0" max="100" value="70">
+          <label><span id="sensVal">70</span>%</label>
+        </div>
       </section>
     </main>
 
@@ -284,14 +298,16 @@
       detector: null,
       jamRunning: false,
       audioContext: null,
+      audioStream: null,
       analyser: null,
       audioData: null,
       beatTimes: [],
+      beatCount: 0,
       bpm: 0,
       level: 0,
       noiseFloor: 0.02,
       lastBeat: 0,
-      jamPhase: 0,
+      sensitivity: 70,
     };
 
     const enc = new TextEncoder();
@@ -314,6 +330,8 @@
     const jamPulse = document.querySelector('#jamPulse');
     const bpmVal = document.querySelector('#bpmVal');
     const levelVal = document.querySelector('#levelVal');
+    const jamSensitivity = document.querySelector('#jamSensitivity');
+    const sensVal = document.querySelector('#sensVal');
 
     function clamp(v, lo = 0, hi = 255) {
       return Math.max(lo, Math.min(hi, Math.round(v)));
@@ -506,22 +524,54 @@
     async function startJam() {
       if (state.jamRunning) return;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      state.audioStream = stream;
       state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const source = state.audioContext.createMediaStreamSource(stream);
       state.analyser = state.audioContext.createAnalyser();
       state.analyser.fftSize = 1024;
-      state.analyser.smoothingTimeConstant = 0.72;
+      state.analyser.smoothingTimeConstant = 0.82;
       state.audioData = new Uint8Array(state.analyser.fftSize);
       source.connect(state.analyser);
       state.jamRunning = true;
+      state.beatTimes = [];
+      state.beatCount = 0;
+      state.bpm = 0;
+      state.noiseFloor = 0.02;
+      state.lastBeat = 0;
+      state.d = 255;
       jamBtn.classList.add('live');
-      jamBtn.textContent = 'Jam Running';
+      jamBtn.textContent = 'Stop Jam';
       setStatus('Jam: listening');
       requestAnimationFrame(trackJam);
     }
 
+    async function stopJam() {
+      state.jamRunning = false;
+      if (state.audioStream) {
+        state.audioStream.getTracks().forEach(track => track.stop());
+      }
+      if (state.audioContext) {
+        await state.audioContext.close().catch(() => {});
+      }
+      state.audioStream = null;
+      state.audioContext = null;
+      state.analyser = null;
+      state.audioData = null;
+      state.x = 127;
+      state.y = 127;
+      state.d = 255;
+      jamBtn.classList.remove('live');
+      jamBtn.textContent = 'Start Jam';
+      jamPulse.style.transform = 'scale(.55)';
+      jamPulse.style.opacity = '.42';
+      setStatus('Jam stopped');
+      updateUi();
+      scheduleSend();
+    }
+
     function registerBeat(now) {
       state.lastBeat = now;
+      state.beatCount += 1;
       state.beatTimes.push(now);
       state.beatTimes = state.beatTimes.filter(t => now - t < 6000);
       if (state.beatTimes.length >= 4) {
@@ -547,29 +597,31 @@
         sum += n * n;
       }
       const rms = Math.sqrt(sum / state.audioData.length);
+      const sens = state.sensitivity / 100;
       state.noiseFloor = state.noiseFloor * 0.985 + rms * 0.015;
-      const threshold = Math.max(0.045, state.noiseFloor * 2.25);
-      const beatReady = now - state.lastBeat > 260;
+      const threshold = Math.max(0.026, state.noiseFloor * (3.0 - sens * 1.45));
+      const beatReady = now - state.lastBeat > 300;
       if (rms > threshold && beatReady) {
         registerBeat(now);
       }
 
       const sinceBeat = now - state.lastBeat;
-      const pulse = Math.max(0, 1 - sinceBeat / 240);
       const bpm = state.bpm || 120;
-      const period = 60000 / bpm;
-      state.jamPhase += Math.PI * 2 * 16 / period;
-      const swing = 22 + pulse * 56;
-      state.x = clamp(127 + Math.sin(state.jamPhase) * swing);
-      state.y = clamp(127 + Math.cos(state.jamPhase * 0.73) * swing * 0.72);
-      state.d = clamp(42 + rms * 520 + pulse * 180);
+      const beatMs = 60000 / bpm;
+      const barProgress = (((state.beatCount % 4) + Math.min(sinceBeat / beatMs, 1)) / 4) % 1;
+      const phase = barProgress * Math.PI * 2;
+      const swing = 54 + sens * 78;
+      const levelDrive = Math.min(1, rms / Math.max(threshold, 0.001)) * sens;
+      state.x = clamp(127 + Math.sin(phase) * swing);
+      state.y = clamp(127 + Math.cos(phase) * swing * 0.68);
+      state.d = 255;
 
-      const level = clamp(rms * 900);
+      const level = clamp(rms * 720 * (0.55 + sens));
       state.level = level;
       bpmVal.textContent = state.bpm ? state.bpm : '--';
       levelVal.textContent = level;
-      jamPulse.style.transform = `scale(${0.55 + pulse * 0.9 + Math.min(rms * 3, 0.35)})`;
-      jamPulse.style.opacity = `${0.38 + pulse * 0.55}`;
+      jamPulse.style.transform = `scale(${0.58 + levelDrive * 0.38})`;
+      jamPulse.style.opacity = `${0.46 + levelDrive * 0.36}`;
 
       updateUi();
       scheduleSend();
@@ -578,7 +630,17 @@
 
     connectBtn.addEventListener('click', connectBle);
     cameraBtn.addEventListener('click', () => startCamera().catch(err => setStatus(`Camera failed: ${err.message || err}`)));
-    jamBtn.addEventListener('click', () => startJam().catch(err => setStatus(`Mic failed: ${err.message || err}`)));
+    jamBtn.addEventListener('click', () => {
+      if (state.jamRunning) {
+        stopJam();
+      } else {
+        startJam().catch(err => setStatus(`Mic failed: ${err.message || err}`));
+      }
+    });
+    jamSensitivity.addEventListener('input', () => {
+      state.sensitivity = Number(jamSensitivity.value);
+      sensVal.textContent = state.sensitivity;
+    });
     pad.addEventListener('pointerdown', e => {
       pad.setPointerCapture(e.pointerId);
       setXYFromPoint(e.clientX, e.clientY);
