@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CoreS3 DMX Controller</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050608;
+      --panel: #101419;
+      --line: #2a333d;
+      --text: #eef7ff;
+      --muted: #89a2b5;
+      --cyan: #2de2ff;
+      --magenta: #ff3fd5;
+      --green: #34f78f;
+      --yellow: #ffe45c;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      min-height: 100svh;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      touch-action: none;
+    }
+    .app {
+      width: 100vw;
+      height: 100svh;
+      display: grid;
+      grid-template-rows: 54px 1fr 72px;
+      padding: env(safe-area-inset-top) 14px env(safe-area-inset-bottom);
+      gap: 10px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .brand strong { font-size: 15px; letter-spacing: 0; }
+    .brand span {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    button {
+      border: 1px solid var(--line);
+      background: #121922;
+      color: var(--text);
+      border-radius: 8px;
+      min-height: 40px;
+      padding: 0 14px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    button.live { border-color: rgba(52,247,143,.45); color: var(--green); }
+    main { min-height: 0; position: relative; overflow: hidden; }
+    .page { display: none; width: 100%; height: 100%; min-height: 0; }
+    .page.active { display: grid; }
+    #manualPage { grid-template-rows: minmax(0, 1fr) 108px; gap: 10px; }
+    .pad-wrap { display: grid; place-items: center; min-height: 0; }
+    .xy-pad {
+      width: min(82vw, 58svh);
+      aspect-ratio: 1;
+      border: 1px solid #26313b;
+      border-radius: 50%;
+      position: relative;
+      background:
+        linear-gradient(90deg, transparent calc(50% - .5px), #26313b 50%, transparent calc(50% + .5px)),
+        linear-gradient(0deg, transparent calc(50% - .5px), #26313b 50%, transparent calc(50% + .5px));
+    }
+    .xy-pad::after {
+      content: "";
+      position: absolute;
+      inset: 9%;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 50%;
+    }
+    .knob {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      position: absolute;
+      transform: translate(-50%, -50%);
+      left: 50%;
+      top: 50%;
+      background: rgba(255,255,255,.18);
+      box-shadow: 0 0 20px rgba(255,255,255,.35);
+    }
+    .readout { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .bar {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      height: 48px;
+      display: grid;
+      align-items: center;
+      grid-template-columns: 30px 1fr 40px;
+      gap: 8px;
+      padding: 0 10px;
+      background: var(--panel);
+    }
+    .track { height: 8px; border-radius: 999px; background: #202934; overflow: hidden; }
+    .fill { height: 100%; width: 50%; background: var(--cyan); border-radius: inherit; }
+    .bar.y .fill { background: var(--magenta); }
+    .bar span { color: var(--muted); font-size: 12px; }
+    .bar b { text-align: right; font-size: 13px; }
+    #colorPage {
+      grid-template-rows: minmax(0, 1fr) 72px;
+      place-items: center;
+      gap: 12px;
+    }
+    #wheel {
+      width: min(82vw, 60svh);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.35);
+      touch-action: none;
+    }
+    .dim-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 54px 1fr 44px;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+    }
+    input[type="range"] { width: 100%; accent-color: var(--yellow); }
+    #cameraPage { grid-template-rows: minmax(0, 1fr) 72px; gap: 10px; }
+    .camera-stage { position: relative; display: grid; place-items: center; min-height: 0; }
+    video, #overlay {
+      width: min(92vw, 64svh);
+      max-height: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+    video { background: #000; border: 1px solid var(--line); }
+    #overlay { position: absolute; pointer-events: none; }
+    nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    nav button.active { border-color: rgba(45,226,255,.55); color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <strong>CoreS3 DMX</strong>
+        <span id="status">Not connected</span>
+      </div>
+      <button id="connectBtn">Connect BLE</button>
+    </header>
+
+    <main>
+      <section id="manualPage" class="page active">
+        <div class="pad-wrap">
+          <div id="pad" class="xy-pad">
+            <div id="knob" class="knob"></div>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="bar">
+            <span>X</span>
+            <div class="track"><div id="xFill" class="fill"></div></div>
+            <b id="xVal">127</b>
+          </div>
+          <div class="bar y">
+            <span>Y</span>
+            <div class="track"><div id="yFill" class="fill"></div></div>
+            <b id="yVal">127</b>
+          </div>
+        </div>
+      </section>
+
+      <section id="colorPage" class="page">
+        <canvas id="wheel" width="420" height="420"></canvas>
+        <div class="dim-row">
+          <span>Dim</span>
+          <input id="dim" type="range" min="0" max="255" value="255">
+          <b id="dimVal">255</b>
+        </div>
+      </section>
+
+      <section id="cameraPage" class="page">
+        <div class="camera-stage">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="overlay" width="640" height="480"></canvas>
+        </div>
+        <button id="cameraBtn">Start Camera Track</button>
+      </section>
+    </main>
+
+    <nav>
+      <button class="active" data-page="manualPage">XY</button>
+      <button data-page="colorPage">Color</button>
+      <button data-page="cameraPage">Camera</button>
+    </nav>
+  </div>
+
+  <script>
+    const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+    const RX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+
+    const state = {
+      connected: false,
+      characteristic: null,
+      x: 127,
+      y: 127,
+      d: 255,
+      r: 255,
+      g: 255,
+      b: 255,
+      w: 0,
+      lastSend: 0,
+      cameraRunning: false,
+      detector: null,
+    };
+
+    const enc = new TextEncoder();
+    const statusEl = document.querySelector('#status');
+    const connectBtn = document.querySelector('#connectBtn');
+    const pad = document.querySelector('#pad');
+    const knob = document.querySelector('#knob');
+    const xFill = document.querySelector('#xFill');
+    const yFill = document.querySelector('#yFill');
+    const xVal = document.querySelector('#xVal');
+    const yVal = document.querySelector('#yVal');
+    const dim = document.querySelector('#dim');
+    const dimVal = document.querySelector('#dimVal');
+    const wheel = document.querySelector('#wheel');
+    const video = document.querySelector('#video');
+    const overlay = document.querySelector('#overlay');
+    const cameraBtn = document.querySelector('#cameraBtn');
+    const overlayCtx = overlay.getContext('2d');
+
+    function clamp(v, lo = 0, hi = 255) {
+      return Math.max(lo, Math.min(hi, Math.round(v)));
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function updateUi() {
+      knob.style.left = `${state.x / 255 * 100}%`;
+      knob.style.top = `${(255 - state.y) / 255 * 100}%`;
+      xFill.style.width = `${state.x / 255 * 100}%`;
+      yFill.style.width = `${state.y / 255 * 100}%`;
+      xVal.textContent = state.x;
+      yVal.textContent = state.y;
+      dim.value = state.d;
+      dimVal.textContent = state.d;
+    }
+
+    async function sendNow() {
+      if (!state.characteristic) return;
+      const msg = `X=${state.x},Y=${state.y},D=${state.d},R=${state.r},G=${state.g},B=${state.b},W=${state.w}`;
+      try {
+        await state.characteristic.writeValueWithoutResponse(enc.encode(msg));
+        setStatus('Connected, sending');
+      } catch (err) {
+        setStatus('Send failed, reconnect');
+      }
+    }
+
+    function scheduleSend() {
+      const now = performance.now();
+      if (now - state.lastSend < 33) return;
+      state.lastSend = now;
+      sendNow();
+    }
+
+    async function connectBle() {
+      if (!navigator.bluetooth) {
+        setStatus('Web Bluetooth is not available here');
+        return;
+      }
+      try {
+        setStatus('Choose CoreS3-DMX');
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ name: 'CoreS3-DMX' }],
+          optionalServices: [SERVICE_UUID],
+        });
+        device.addEventListener('gattserverdisconnected', () => {
+          state.connected = false;
+          state.characteristic = null;
+          connectBtn.classList.remove('live');
+          connectBtn.textContent = 'Connect BLE';
+          setStatus('BLE disconnected');
+        });
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        state.characteristic = await service.getCharacteristic(RX_UUID);
+        state.connected = true;
+        connectBtn.classList.add('live');
+        connectBtn.textContent = 'Connected';
+        setStatus('Connected to CoreS3-DMX');
+        sendNow();
+      } catch (err) {
+        setStatus(`Connect failed: ${err.message || err}`);
+      }
+    }
+
+    function setXYFromPoint(clientX, clientY) {
+      const rect = pad.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const radius = rect.width / 2;
+      let dx = (clientX - cx) / radius;
+      let dy = (clientY - cy) / radius;
+      const mag = Math.hypot(dx, dy);
+      if (mag > 1) {
+        dx /= mag;
+        dy /= mag;
+      }
+      state.x = clamp((dx + 1) * 127.5);
+      state.y = clamp((1 - dy) * 127.5);
+      updateUi();
+      scheduleSend();
+    }
+
+    function hsvToRgb(h, s, v) {
+      const c = v * s;
+      const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      const m = v - c;
+      let r = 0, g = 0, b = 0;
+      if (h < 60) [r, g, b] = [c, x, 0];
+      else if (h < 120) [r, g, b] = [x, c, 0];
+      else if (h < 180) [r, g, b] = [0, c, x];
+      else if (h < 240) [r, g, b] = [0, x, c];
+      else if (h < 300) [r, g, b] = [x, 0, c];
+      else [r, g, b] = [c, 0, x];
+      return [clamp((r + m) * 255), clamp((g + m) * 255), clamp((b + m) * 255)];
+    }
+
+    function drawWheel() {
+      const ctx = wheel.getContext('2d');
+      const size = wheel.width;
+      const radius = size / 2 - 2;
+      const img = ctx.createImageData(size, size);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const dx = x - size / 2;
+          const dy = y - size / 2;
+          const dist = Math.hypot(dx, dy);
+          const i = (y * size + x) * 4;
+          if (dist > radius) {
+            img.data[i + 3] = 0;
+            continue;
+          }
+          const hue = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+          const sat = dist / radius;
+          const [r, g, b] = hsvToRgb(hue, sat, 1);
+          img.data[i] = r;
+          img.data[i + 1] = g;
+          img.data[i + 2] = b;
+          img.data[i + 3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    function pickColor(clientX, clientY) {
+      const rect = wheel.getBoundingClientRect();
+      const x = (clientX - rect.left) / rect.width * wheel.width;
+      const y = (clientY - rect.top) / rect.height * wheel.height;
+      const dx = x - wheel.width / 2;
+      const dy = y - wheel.height / 2;
+      const dist = Math.hypot(dx, dy);
+      const radius = wheel.width / 2 - 2;
+      if (dist > radius) return;
+      const hue = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+      const sat = dist / radius;
+      [state.r, state.g, state.b] = hsvToRgb(hue, sat, 1);
+      state.w = 0;
+      scheduleSend();
+    }
+
+    async function startCamera() {
+      if (state.cameraRunning) return;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      video.srcObject = stream;
+      state.cameraRunning = true;
+      cameraBtn.textContent = 'Camera Tracking';
+      if ('FaceDetector' in window) {
+        state.detector = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+        setStatus('Camera: FaceDetector');
+      } else {
+        setStatus('FaceDetector not available, manual mode works');
+      }
+      requestAnimationFrame(trackFace);
+    }
+
+    async function trackFace() {
+      overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+      if (state.detector && video.readyState >= 2) {
+        try {
+          const faces = await state.detector.detect(video);
+          if (faces.length) {
+            const box = faces[0].boundingBox;
+            const sx = overlay.width / video.videoWidth;
+            const sy = overlay.height / video.videoHeight;
+            const cx = box.x + box.width / 2;
+            const cy = box.y + box.height / 2;
+            state.x = clamp(cx / video.videoWidth * 255);
+            state.y = clamp((1 - cy / video.videoHeight) * 255);
+            updateUi();
+            scheduleSend();
+            overlayCtx.strokeStyle = '#ff3fd5';
+            overlayCtx.lineWidth = 4;
+            overlayCtx.strokeRect(box.x * sx, box.y * sy, box.width * sx, box.height * sy);
+          }
+        } catch (err) {
+          state.detector = null;
+          setStatus('Face API not available, manual mode works');
+        }
+      }
+      if (state.cameraRunning) requestAnimationFrame(trackFace);
+    }
+
+    connectBtn.addEventListener('click', connectBle);
+    cameraBtn.addEventListener('click', () => startCamera().catch(err => setStatus(`Camera failed: ${err.message || err}`)));
+    pad.addEventListener('pointerdown', e => {
+      pad.setPointerCapture(e.pointerId);
+      setXYFromPoint(e.clientX, e.clientY);
+    });
+    pad.addEventListener('pointermove', e => {
+      if (e.buttons) setXYFromPoint(e.clientX, e.clientY);
+    });
+    wheel.addEventListener('pointerdown', e => {
+      wheel.setPointerCapture(e.pointerId);
+      pickColor(e.clientX, e.clientY);
+    });
+    wheel.addEventListener('pointermove', e => {
+      if (e.buttons) pickColor(e.clientX, e.clientY);
+    });
+    dim.addEventListener('input', () => {
+      state.d = Number(dim.value);
+      updateUi();
+      scheduleSend();
+    });
+    document.querySelectorAll('nav button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.page').forEach(page => page.classList.toggle('active', page.id === btn.dataset.page));
+      });
+    });
+
+    drawWheel();
+    updateUi();
+  </script>
+</body>
+</html>
